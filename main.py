@@ -6,11 +6,17 @@ import matplotlib.animation as anim
 from scipy.ndimage.interpolation import rotate
 from pprint import pprint
 from skimage.transform import radon, iradon
+from DICOMhandler import DICOMhandler
 
 
 class Radon:
-    def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float):  # da, span in radians
-        self._bitmap = plt.imread(bitmap_path).astype('float64')[:, :, 0]
+    def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float, dicom: boll = False):  # da, span in radians
+        if dicom:
+            self._dicom = DICOMhandler().load(bitmap_path)
+            self._bitmap = self._dicom.bitmap
+        else:
+            self._bitmap = plt.imread(bitmap_path).astype('float64')[:, :, 0]
+
         self._h, self._w = self._bitmap.shape
         self._sinogram = None
         self._center = np.array((self._h - 1, self._w - 1)) / 2

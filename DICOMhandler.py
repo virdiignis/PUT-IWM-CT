@@ -25,6 +25,8 @@ class DICOMhandler:
             except KeyError:
                 self.comment = ""
             self.bitmap = d.pixel_array
+            if len(self.bitmap.shape) > 2:
+                self.bitmap = self.bitmap[:, :, 0]
 
     def load(self, filename):
         dicom_exam = self.DICOMexamination(filename)
