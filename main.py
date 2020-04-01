@@ -10,7 +10,7 @@ from DICOMhandler import DICOMhandler
 
 
 class Radon:
-    def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float, dicom: boll = False):  # da, span in radians
+    def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float, dicom: bool = False):  # da, span in radians
         if dicom:
             self._dicom = DICOMhandler().load(bitmap_path)
             self._bitmap = self._dicom.bitmap
