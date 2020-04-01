@@ -177,7 +177,7 @@ if __name__ == '__main__':
     # ct = CT('/home/prance/PycharmProjects/IwM/CT/images/Shepp_logan.jpg')
     # ct.radon_transform(1000)
     # ct.iradon()
-    r = Radon('/home/prance/PycharmProjects/IwM/CT/images/Paski2.jpg', np.pi / 360, 200, *np.pi)
+    r = Radon('/home/prance/PycharmProjects/IwM/CT/images/Paski2.jpg', np.pi / 360, 200, np.pi)
     r.sinogram()
     r.reconstruct()
     r.show_reconstruction()
