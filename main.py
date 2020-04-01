@@ -8,36 +8,6 @@ from pprint import pprint
 from skimage.transform import radon, iradon
 
 
-class CT:
-    def __init__(self, bitmap_path: str):
-        self._bitmap = plt.imread(bitmap_path).astype('float64')[:, :, 0]
-        self._sinogram = None
-
-    def radon_transform(self, steps: int):
-        w, h = self._bitmap.shape
-        sinogram = np.zeros((w, steps), dtype='float64')
-        for i, s in enumerate(np.linspace(0, 180, num=steps)):
-            rotation = rotate(self._bitmap, s, reshape=False)
-            sinogram[:, i] = np.sum(rotation, axis=0)
-
-        self._sinogram = rotate(sinogram, 180, reshape=False)
-        return self._sinogram
-
-    def sinogram(self, width=None):
-        if width is None:
-            width, _ = self._bitmap.shape
-        plt.imshow(self.radon_transform(width), cmap='gray')
-        plt.xticks([])
-        plt.yticks([])
-        plt.show()
-
-    def iradon(self):
-        plt.imshow(iradon(self._sinogram), cmap='gray')
-        plt.xticks([])
-        plt.yticks([])
-        plt.show()
-
-
 class Radon:
     def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float):  # da, span in radians
         self._bitmap = plt.imread(bitmap_path).astype('float64')[:, :, 0]
@@ -77,71 +47,6 @@ class Radon:
         self._rotation_angle += self._da
         self._calculate_emitter()
         self._calculate_detectors()
-
-    # def _brasenham(self, p0: np.array, p1: np.array):
-    #     if p1[1] <= p0[1]:
-    #         p0, p1 = p1, p0
-    #     line = np.polyfit((p0[1], p1[1]), (p0[0], p1[0]), 1)
-    #     a = line[0]  # directional coefficient
-    #
-    #     if p0[0] > p1[0]:
-    #         p0[0] = -p0[0]
-    #         p1[0] = -p1[0]
-    #         minus = True
-    #     else:
-    #         minus = False
-    #
-    #     points = []
-    #
-    #     if -1 < a < 1:  # iterating over x's
-    #         y0, x0 = map(int, p0)
-    #         y1, x1 = map(int, p1)
-    #
-    #         m_new = 2 * (y1 - y0)
-    #         slope_error_new = m_new - (x1 - x0)
-    #
-    #         y = y0
-    #         for x in range(x0, x1 + 1):
-    #             if x >= self._w or y >= self._h:
-    #                 print(f"p0: {p0} p1: {p1} x: {x} y: {y}")
-    #                 break
-    #             points.append((y, x))
-    #             slope_error_new = slope_error_new + m_new
-    #             if slope_error_new >= 0:
-    #                 y += 1
-    #                 slope_error_new = slope_error_new - 2 * (x1 - x0)
-    #     else:  # iterating over y's
-    #         if p1[0] <= p0[0]:
-    #             p0, p1 = p1, p0
-    #
-    #         y0, x0 = map(int, p0)
-    #         y1, x1 = map(int, p1)
-    #
-    #         m_new = 2 * (x1 - x0)
-    #         slope_error_new = m_new - (y1 - y0)
-    #
-    #         x = x0
-    #         for y in range(y0, y1 + 1):
-    #             if x >= self._w or y >= self._h:
-    #                 print(f"p0: {p0} p1: {p1} x: {x} y: {y}")
-    #                 break
-    #             points.append((y, x))
-    #             slope_error_new = slope_error_new + m_new
-    #             if slope_error_new >= 0:
-    #                 x += 1
-    #                 slope_error_new = slope_error_new - 2 * (y1 - y0)
-    #
-    #     points = np.array(points)
-    #     if minus:
-    #         points = points * np.array((-1, 1))
-    #
-    #     # y, x = zip(*points)
-    #     # plt.scatter(x, y)
-    #     # plt.xticks(range(0, 400, 100))
-    #     # plt.yticks(range(0, 400, 100))
-    #     # plt.show()
-    #
-    #     return points
 
     def _brasenham(self, p0, p1):
         y0, x0 = map(int, np.round(p0))
