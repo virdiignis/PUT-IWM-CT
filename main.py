@@ -1,16 +1,17 @@
-from time import sleep
+import math
+from tkinter import *
+from tkinter import filedialog
+from PIL import ImageTk, Image
+import scipy
 from scipy import misc
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
-from scipy.ndimage.interpolation import rotate
-from pprint import pprint
-from skimage.transform import radon, iradon
 from DICOMhandler import DICOMhandler
 
 
 class Radon:
-    def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float, dicom: boll = False):  # da, span in radians
+    def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float, dicom: bool = False):  # da, span in radians
         if dicom:
             self._dicom = DICOMhandler().load(bitmap_path)
             self._bitmap = self._dicom.bitmap
@@ -109,7 +110,7 @@ class Radon:
         im = plt.imshow(a, interpolation='none', aspect='auto', vmin=0, vmax=1, cmap='gray')
 
         def animate_func(i):
-            im.set_array(r._sinogram_step(i, anim=True))
+            im.set_array(self._sinogram_step(i, anim=True))
             return [im]
 
         ani = anim.FuncAnimation(
@@ -162,7 +163,7 @@ class Radon:
         im = plt.imshow(a, interpolation='none', aspect='auto', vmin=0, vmax=1, cmap='gray')
 
         def animate_func(i):
-            im.set_array(r._reconstruction_step(i, anim=True))
+            im.set_array(self._reconstruction_step(i, anim=True))
             return [im]
 
         ani = anim.FuncAnimation(
@@ -178,16 +179,72 @@ class Radon:
         plt.imshow(self._reconstructed_bitmap, cmap='gray')
         plt.show()
 
+class GUI:
+
+    def __openAndResize(self, filename, height, panel):
+        image = Image.open(filename)
+        image = image.resize((500,height),Image.ANTIALIAS)
+        image = ImageTk.PhotoImage(image)
+        panel.configure(image=image)
+        panel.image = image
+
+    def _showBasicImage(self):
+        self._filename = filedialog.askopenfilename()
+        self.__openAndResize(self._filename, 480, self.panel)
+
+    def _makeSinogram(self):
+        self._r = Radon(self._filename, np.pi / 360, 200, np.pi)
+        bitmap = self._r.sinogram()
+        scipy.misc.imsave('outfile.jpg', bitmap)
+        self.__openAndResize("outfile.jpg",bitmap.shape[0],self.panel_sinogram)
+
+    def _showResult(self):
+        bitmap = self._r.reconstruct()
+        scipy.misc.imsave('result.jpg', bitmap)
+        self.__openAndResize("result.jpg",480,self.panel_result)
+
+    def __init__(self):
+        self._filename = "";
+
+        self.root = Tk()
+        self.root.geometry("1500x500")
+
+        self.f = Frame(self.root, height=500, width=500)
+        self.f.pack_propagate(0)
+        self.f.place(x=0, y=0)
+
+        self.f2 = Frame(self.root, height=500, width=500)
+        self.f2.pack_propagate(0)
+        self.f2.place(x=500, y=0)
+
+        self.f3 = Frame(self.root, height=500, width=500)
+        self.f3.pack_propagate(0)
+        self.f3.place(x=1000, y=0)
+
+        self.chooseFileButton = Button(self.f,text="Wybierz plik", command=self._showBasicImage)
+        self.chooseFileButton.pack(fill=X, expand=0)
+
+        self.sinogramButton = Button(self.f2,text="Pokaż sinogram", command=self._makeSinogram)
+        self.sinogramButton.pack(fill=X, expand=0)
+
+        self.resultButton = Button(self.f3,text="Pokaż wynik końcowy", command=self._showResult)
+        self.resultButton.pack(fill=X, expand=0)
+
+        self.panel = Label(self.f)
+        self.panel.pack(fill=BOTH, expand=1)
+
+        self.panel_sinogram = Label(self.f2)
+        self.panel_sinogram.pack(fill=BOTH,expand=1)
+
+        self.panel_result = Label(self.f3)
+        self.panel_result.pack(fill=BOTH, expand=1)
+
+        self.root.mainloop()
+
+def mse(orig, final):
+    err = np.sum((orig.astype("float64") - final.astype("float64"))**2)
+    err /= float(orig.shape[0] * orig.shape[1])
+    return math.sqrt(err)
 
 if __name__ == '__main__':
-    # ct = CT('/home/prance/PycharmProjects/IwM/CT/images/Shepp_logan.jpg')
-    # ct.radon_transform(1000)
-    # ct.iradon()
-    r = Radon('/home/prance/PycharmProjects/IwM/CT/images/Paski2.jpg', np.pi / 360, 200, np.pi)
-    r.sinogram()
-    r.reconstruct()
-    r.show_reconstruction()
-    # r.sinogram()
-    # r.show_sinogram()
-    # r.reconstruct()
-    # r.show_reconstruction()
+    gui = GUI()
