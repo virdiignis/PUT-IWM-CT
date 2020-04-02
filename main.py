@@ -8,10 +8,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from DICOMhandler import DICOMhandler
+from scipy.ndimage.filters import convolve
 
 
 class Radon:
-    def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float, dicom: bool = False):  # da, span in radians
+
+    def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float,
+                 dicom: bool = False):  # da, span in radians
+
         if dicom:
             self._dicom = DICOMhandler().load(bitmap_path)
             self._bitmap = self._dicom.bitmap
@@ -22,7 +26,7 @@ class Radon:
         self._sinogram = None
         self._center = np.array((self._h - 1, self._w - 1)) / 2
         self._da = da
-        self._steps = int(np.pi * 2 / da)
+        self._steps = int(2 * np.pi / da)
         self._initial_emitter_vector = np.array((0, (self._w - 1))) / 2
         self._rotation_angle = 0
         self._emitter = self._center + self._initial_emitter_vector
@@ -32,6 +36,7 @@ class Radon:
         self._angle_between_detectors = span / (detectors_no - 1)
         self._calculate_detectors()
         self._reconstructed_bitmap = None
+        self._reconstructed_unnormed = None
 
     def _calculate_detectors(self):
         start_to_detector = self._rotation_angle + self._emitter_to_1st_detector
@@ -75,14 +80,19 @@ class Radon:
             xx, xy, yx, yy = 0, ysign, xsign, 0
 
         D = 2 * dy - dx
-        y = 0
+        x, y = 0, 0
 
-        for x in range(dx + 1):
-            yield x0 + x * xx + y * yx, y0 + x * xy + y * yy
+        while True:
+            xr = x0 + x * xx + y * yx
+            yr = y0 + x * xy + y * yy
+            if xr < 0 or xr >= self._w or yr < 0 or yr >= self._h:
+                break
+            yield yr, xr
             if D >= 0:
                 y += 1
                 D -= 2 * dx
             D += 2 * dy
+            x += 1
 
     def _sinogram_step(self, step: int, anim: bool = False):
         self._rotate()
@@ -136,27 +146,40 @@ class Radon:
             line = self._brasenham(self._emitter, d)
             val = self._sinogram[i][step]
             for y, x in line:
-                self._reconstructed_bitmap[y][x] += val
+                self._reconstructed_unnormed[y][x] += val
 
         if anim:
             print(step)
-            norm = np.linalg.norm(self._reconstructed_bitmap)
-            return self._reconstructed_bitmap / norm * 255.0
+            norm = np.linalg.norm(self._reconstructed_unnormed)
+            return self._reconstructed_unnormed / norm * 255.0
 
-    def reconstruct(self):
+    def reconstruct(self, filter=True):
         self._reset()
-        self._reconstructed_bitmap = np.zeros((self._h, self._w), dtype='float64')
+        self._reconstructed_unnormed = np.zeros((self._h, self._w), dtype='float64')
         for i in range(self._steps):
             self._reconstruction_step(i)
 
-        norm = np.linalg.norm(self._reconstructed_bitmap)
-        self._reconstructed_bitmap = self._reconstructed_bitmap / norm * 255.0
+        if filter:
+            self.convolve()
 
+        self._normalize()
         return self._reconstructed_bitmap
+
+    def _normalize(self):
+        norm = np.linalg.norm(self._reconstructed_unnormed)
+        self._reconstructed_bitmap = self._reconstructed_unnormed / norm * 255.0
+
+    def convolve(self, k=100, mode='constant'):
+        k = np.array([[10, 10, 10],
+                      [10, k, 10],
+                      [10, 10, 10]])
+        self._reconstructed_unnormed = convolve(self._reconstructed_unnormed, k, mode=m)
+
+        return self._reconstructed_unnormed
 
     def reconstruction_animated(self):
         self._reset()
-        self._reconstructed_bitmap = np.zeros((self._h, self._w), dtype='float64')
+        self._reconstructed_unnormed = np.zeros((self._h, self._w), dtype='float64')
         fig = plt.figure()
 
         a = self._reconstruction_step(0, anim=True)
@@ -177,6 +200,13 @@ class Radon:
 
     def show_reconstruction(self):
         plt.imshow(self._reconstructed_bitmap, cmap='gray')
+        plt.show()
+
+    def show_difference(self):
+        diff = self._reconstructed_bitmap - self._bitmap
+        # norm = np.linalg.norm(diff)
+        # diff = diff / norm * 255.0
+        plt.imshow(diff, cmap='gray')
         plt.show()
 
 class GUI:
@@ -248,3 +278,6 @@ def mse(orig, final):
 
 if __name__ == '__main__':
     gui = GUI()
+
+
+
