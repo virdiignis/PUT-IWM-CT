@@ -66,14 +66,14 @@ class Radon:
         y0, x0 = map(int, np.round(p0))
         y1, x1 = map(int, np.round(p1))
 
-        dx = x1 - x0
-        dy = y1 - y0
+        dx = int(x1 - x0)
+        dy = int(y1 - y0)
 
-        xsign = dx > 0 or -1
-        ysign = dy > 0 or -1
+        xsign = int(dx > 0 or -1)
+        ysign = int(dy > 0 or -1)
 
-        dx = abs(dx)
-        dy = abs(dy)
+        dx = int(abs(dx))
+        dy = int(abs(dy))
 
         if dx > dy:
             xx, xy, yx, yy = xsign, 0, 0, ysign
@@ -81,22 +81,28 @@ class Radon:
             dx, dy = dy, dx
             xx, xy, yx, yy = 0, ysign, xsign, 0
 
-        D = 2 * dy - dx
+        D = int(2 * dy - dx)
         x, y = 0, 0
 
         result = np.zeros((self._h, self._w), dtype='bool')
 
-        while True:
-            xr = x0 + x * xx + y * yx
-            yr = y0 + x * xy + y * yy
-            if xr < 0 or xr >= self._w or yr < 0 or yr >= self._h:
-                break
+        dy2 = 2 * dy
+        dx2 = 2 * dx
+
+        xr = x0 + x * xx + y * yx
+        yr = y0 + x * xy + y * yy
+
+        while 0 <= xr < self._w and 0 <= yr < self._h:
             result[yr][xr] = 1
+
             if D >= 0:
                 y += 1
-                D -= 2 * dx
-            D += 2 * dy
+                D -= dx2
+            D += dy2
             x += 1
+
+            xr = x0 + x * xx + y * yx
+            yr = y0 + x * xy + y * yy
 
         return result
 
