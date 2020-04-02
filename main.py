@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from DICOMhandler import DICOMhandler
 from scipy.ndimage.filters import convolve
+from scipy.stats import mstats
 
 
 class Radon:
-
     def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float,
                  dicom: bool = False):  # da, span in radians
 
@@ -20,7 +20,9 @@ class Radon:
             self._dicom = DICOMhandler().load(bitmap_path)
             self._bitmap = self._dicom.bitmap
         else:
-            self._bitmap = plt.imread(bitmap_path).astype('float64')[:, :, 0]
+            self._bitmap = plt.imread(bitmap_path).astype('float64')
+            if len(self._bitmap.shape) == 3:
+                self._bitmap = self._bitmap[:, :, 0]
 
         self._h, self._w = self._bitmap.shape
         self._sinogram = None
@@ -82,22 +84,26 @@ class Radon:
         D = 2 * dy - dx
         x, y = 0, 0
 
+        result = np.zeros((self._h, self._w), dtype='bool')
+
         while True:
             xr = x0 + x * xx + y * yx
             yr = y0 + x * xy + y * yy
             if xr < 0 or xr >= self._w or yr < 0 or yr >= self._h:
                 break
-            yield yr, xr
+            result[yr][xr] = 1
             if D >= 0:
                 y += 1
                 D -= 2 * dx
             D += 2 * dy
             x += 1
 
+        return result
+
     def _sinogram_step(self, step: int, anim: bool = False):
         self._rotate()
         for i, d in enumerate(self._detectors):
-            self._sinogram[i][step] = sum((self._bitmap[y][x] for y, x in self._brasenham(self._emitter, d)))
+            self._sinogram[i][step] = np.mean(self._bitmap[self._brasenham(self._emitter, d)])
 
         if anim:
             norm = np.linalg.norm(self._sinogram)
@@ -145,8 +151,7 @@ class Radon:
         for i, d in enumerate(self._detectors):
             line = self._brasenham(self._emitter, d)
             val = self._sinogram[i][step]
-            for y, x in line:
-                self._reconstructed_unnormed[y][x] += val
+            self._reconstructed_unnormed[line] += val
 
         if anim:
             print(step)
@@ -173,7 +178,7 @@ class Radon:
         k = np.array([[10, 10, 10],
                       [10, k, 10],
                       [10, 10, 10]])
-        self._reconstructed_unnormed = convolve(self._reconstructed_unnormed, k, mode=m)
+        self._reconstructed_unnormed = convolve(self._reconstructed_unnormed, k, mode=mode)
 
         return self._reconstructed_unnormed
 
@@ -209,11 +214,11 @@ class Radon:
         plt.imshow(diff, cmap='gray')
         plt.show()
 
-class GUI:
 
+class GUI:
     def __openAndResize(self, filename, height, panel):
         image = Image.open(filename)
-        image = image.resize((500,height),Image.ANTIALIAS)
+        image = image.resize((500, height), Image.ANTIALIAS)
         image = ImageTk.PhotoImage(image)
         panel.configure(image=image)
         panel.image = image
@@ -225,13 +230,13 @@ class GUI:
     def _makeSinogram(self):
         self._r = Radon(self._filename, np.pi / 360, 200, np.pi)
         bitmap = self._r.sinogram()
-        scipy.misc.imsave('outfile.jpg', bitmap)
-        self.__openAndResize("outfile.jpg",bitmap.shape[0],self.panel_sinogram)
+        plt.imsave('outfile.jpg', bitmap, cmap='gray')
+        self.__openAndResize("outfile.jpg", bitmap.shape[0], self.panel_sinogram)
 
     def _showResult(self):
         bitmap = self._r.reconstruct()
-        scipy.misc.imsave('result.jpg', bitmap)
-        self.__openAndResize("result.jpg",480,self.panel_result)
+        plt.imsave('result.jpg', bitmap, cmap='gray')
+        self.__openAndResize("result.jpg", 480, self.panel_result)
 
     def __init__(self):
         self._filename = "";
@@ -251,33 +256,37 @@ class GUI:
         self.f3.pack_propagate(0)
         self.f3.place(x=1000, y=0)
 
-        self.chooseFileButton = Button(self.f,text="Wybierz plik", command=self._showBasicImage)
+        self.chooseFileButton = Button(self.f, text="Wybierz plik", command=self._showBasicImage)
         self.chooseFileButton.pack(fill=X, expand=0)
 
-        self.sinogramButton = Button(self.f2,text="Pokaż sinogram", command=self._makeSinogram)
+        self.sinogramButton = Button(self.f2, text="Pokaż sinogram", command=self._makeSinogram)
         self.sinogramButton.pack(fill=X, expand=0)
 
-        self.resultButton = Button(self.f3,text="Pokaż wynik końcowy", command=self._showResult)
+        self.resultButton = Button(self.f3, text="Pokaż wynik końcowy", command=self._showResult)
         self.resultButton.pack(fill=X, expand=0)
 
         self.panel = Label(self.f)
         self.panel.pack(fill=BOTH, expand=1)
 
         self.panel_sinogram = Label(self.f2)
-        self.panel_sinogram.pack(fill=BOTH,expand=1)
+        self.panel_sinogram.pack(fill=BOTH, expand=1)
 
         self.panel_result = Label(self.f3)
         self.panel_result.pack(fill=BOTH, expand=1)
 
         self.root.mainloop()
 
+
 def mse(orig, final):
-    err = np.sum((orig.astype("float64") - final.astype("float64"))**2)
+    err = np.sum((orig.astype("float64") - final.astype("float64")) ** 2)
     err /= float(orig.shape[0] * orig.shape[1])
     return math.sqrt(err)
 
+
 if __name__ == '__main__':
-    gui = GUI()
-
-
-
+    # gui = GUI()
+    r = Radon('images/CT_ScoutView.jpg', np.pi / 180, 200, 3 * np.pi / 2)
+    r.sinogram()
+    r.show_sinogram()
+    r.reconstruct()
+    r.show_reconstruction()
