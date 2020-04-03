@@ -1,15 +1,11 @@
-import math
 from tkinter import *
 from tkinter import filedialog
 from PIL import ImageTk, Image
-import scipy
-from scipy import misc
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from DICOMhandler import DICOMhandler
 from scipy.ndimage.filters import convolve
-from scipy.stats import mstats
 from ctypes import *
 
 
@@ -147,8 +143,7 @@ class Radon:
         return self._reconstructed_bitmap
 
     def _normalize(self):
-        norm = np.linalg.norm(self._reconstructed_unnormed)
-        self._reconstructed_bitmap = self._reconstructed_unnormed / norm * 255.0
+        self._reconstructed_bitmap = self._reconstructed_unnormed * 255.0/self._reconstructed_unnormed.max()
 
     def convolve(self, k=100, mode='constant'):
         k = np.array([[10, 10, 10],
@@ -184,9 +179,9 @@ class Radon:
         plt.show()
 
     def show_difference(self):
-        diff = self._reconstructed_bitmap - self._bitmap
-        # norm = np.linalg.norm(diff)
-        # diff = diff / norm * 255.0
+        diff = self._bitmap - self._reconstructed_bitmap
+        diff += 255
+        diff = diff * 255.0 / diff.max()
         plt.imshow(diff, cmap='gray')
         plt.show()
 
@@ -253,16 +248,20 @@ class GUI:
         self.root.mainloop()
 
 
-def mse(orig, final):
-    err = np.sum((orig.astype("float64") - final.astype("float64")) ** 2)
-    err /= float(orig.shape[0] * orig.shape[1])
-    return math.sqrt(err)
+class Tests:
+    @staticmethod
+    def mse(orig, final):
+        err = np.sum((orig - final) ** 2)
+        err /= orig.shape[0] * orig.shape[1]
+        return np.sqrt(err)
 
 
 if __name__ == '__main__':
     # gui = GUI()
-    r = Radon('images/CT_ScoutView.jpg', np.pi / 180, 200, 3 * np.pi / 2)
+    r = Radon('images/Kwadraty2.jpg', np.pi / 180, 10,  np.pi / 2)
     r.sinogram()
     r.show_sinogram()
     r.reconstruct()
     r.show_reconstruction()
+    # r.show_difference()
+    print(Tests().mse(r._bitmap, r._reconstructed_bitmap))
