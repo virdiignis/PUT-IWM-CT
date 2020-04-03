@@ -10,9 +10,12 @@ import matplotlib.animation as anim
 from DICOMhandler import DICOMhandler
 from scipy.ndimage.filters import convolve
 from scipy.stats import mstats
+from ctypes import *
 
 
 class Radon:
+    brasenham_lib = CDLL("/home/prance/PycharmProjects/IwM/CT/brasenham.so")
+
     def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float,
                  dicom: bool = False):  # da, span in radians
 
@@ -39,6 +42,7 @@ class Radon:
         self._calculate_detectors()
         self._reconstructed_bitmap = None
         self._reconstructed_unnormed = None
+        self._c_array_type = c_bool * (self._h * self._w)
 
     def _calculate_detectors(self):
         start_to_detector = self._rotation_angle + self._emitter_to_1st_detector
@@ -63,46 +67,13 @@ class Radon:
         self._calculate_detectors()
 
     def _brasenham(self, p0, p1):
+        result = self._c_array_type()
         y0, x0 = map(int, np.round(p0))
         y1, x1 = map(int, np.round(p1))
+        self.brasenham_lib.brasenham(self._h, self._w, y0, x0, y1, x1, byref(result))
 
-        dx = int(x1 - x0)
-        dy = int(y1 - y0)
-
-        xsign = int(dx > 0 or -1)
-        ysign = int(dy > 0 or -1)
-
-        dx = int(abs(dx))
-        dy = int(abs(dy))
-
-        if dx > dy:
-            xx, xy, yx, yy = xsign, 0, 0, ysign
-        else:
-            dx, dy = dy, dx
-            xx, xy, yx, yy = 0, ysign, xsign, 0
-
-        D = int(2 * dy - dx)
-        x, y = 0, 0
-
-        result = np.zeros((self._h, self._w), dtype='bool')
-
-        dy2 = 2 * dy
-        dx2 = 2 * dx
-
-        xr = x0 + x * xx + y * yx
-        yr = y0 + x * xy + y * yy
-
-        while 0 <= xr < self._w and 0 <= yr < self._h:
-            result[yr][xr] = 1
-
-            if D >= 0:
-                y += 1
-                D -= dx2
-            D += dy2
-            x += 1
-
-            xr = x0 + x * xx + y * yx
-            yr = y0 + x * xy + y * yy
+        result = np.array(result)
+        result.shape = self._h, self._w
 
         return result
 
@@ -156,8 +127,7 @@ class Radon:
         self._rotate()
         for i, d in enumerate(self._detectors):
             line = self._brasenham(self._emitter, d)
-            val = self._sinogram[i][step]
-            self._reconstructed_unnormed[line] += val
+            self._reconstructed_unnormed[line] += self._sinogram[i][step]
 
         if anim:
             print(step)
