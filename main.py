@@ -7,6 +7,8 @@ import matplotlib.animation as anim
 from DICOMhandler import DICOMhandler
 from scipy.ndimage.filters import convolve
 from ctypes import *
+import csv
+from multiprocessing import Process
 
 
 class Radon:
@@ -112,6 +114,8 @@ class Radon:
 
     def show_sinogram(self):
         plt.imshow(self._sinogram, cmap='gray')
+        plt.xticks([])
+        plt.yticks([])
         plt.show()
 
     def _reset(self):
@@ -143,7 +147,7 @@ class Radon:
         return self._reconstructed_bitmap
 
     def _normalize(self):
-        self._reconstructed_bitmap = self._reconstructed_unnormed * 255.0/self._reconstructed_unnormed.max()
+        self._reconstructed_bitmap = self._reconstructed_unnormed * 255.0 / self._reconstructed_unnormed.max()
 
     def convolve(self, k=100, mode='constant'):
         k = np.array([[10, 10, 10],
@@ -176,6 +180,8 @@ class Radon:
 
     def show_reconstruction(self):
         plt.imshow(self._reconstructed_bitmap, cmap='gray')
+        plt.xticks([])
+        plt.yticks([])
         plt.show()
 
     def show_difference(self):
@@ -183,6 +189,8 @@ class Radon:
         diff += 255
         diff = diff * 255.0 / diff.max()
         plt.imshow(diff, cmap='gray')
+        plt.xticks([])
+        plt.yticks([])
         plt.show()
 
 
@@ -253,15 +261,60 @@ class Tests:
     def mse(orig, final):
         err = np.sum((orig - final) ** 2)
         err /= orig.shape[0] * orig.shape[1]
-        return np.sqrt(err)
+        res = np.sqrt(err)
+        return res
+
+    def __init__(self):
+        self.image_path = "images/Shepp_logan.jpg"
+
+    def test1(self):
+        f = open("results1.csv", "w")
+        w = csv.writer(f)
+        steps = 180
+        detectors_span = 1
+        for detectors in range(90, 721, 90):
+            r = Radon(self.image_path, np.pi / steps, detectors, detectors_span * np.pi)
+            r.sinogram()
+            r.reconstruct()
+            print((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+            w.writerow((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+        f.close()
+
+    def test2(self):
+        f = open("results2.csv", "w")
+        w = csv.writer(f)
+        detectors = 180
+        detectors_span = 1
+        for steps in range(90, 721, 90):
+            r = Radon(self.image_path, np.pi / steps, detectors, detectors_span * np.pi)
+            r.sinogram()
+            r.reconstruct()
+            print((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+            w.writerow((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+        f.close()
+
+    def test3(self):
+        f = open("results2.csv", "w")
+        w = csv.writer(f)
+        detectors = 180
+        steps = 180
+        for detectors_span in np.linspace(45, 270, 45):
+            r = Radon(self.image_path, np.pi / steps, detectors, detectors_span / 180 * np.pi)
+            r.sinogram()
+            r.reconstruct()
+            print((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+            w.writerow((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+        f.close()
 
 
 if __name__ == '__main__':
-    # gui = GUI()
-    r = Radon('images/Kwadraty2.jpg', np.pi / 180, 10,  np.pi / 2)
-    r.sinogram()
-    r.show_sinogram()
-    r.reconstruct()
-    r.show_reconstruction()
-    # r.show_difference()
-    print(Tests().mse(r._bitmap, r._reconstructed_bitmap))
+    t = Tests()
+    p1 = Process(target=t.test1)
+    p2 = Process(target=t.test2)
+    p3 = Process(target=t.test3)
+    p1.start()
+    p2.start()
+    p3.start()
+    p1.join()
+    p2.join()
+    p3.join()
