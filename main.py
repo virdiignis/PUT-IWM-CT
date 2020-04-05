@@ -1,14 +1,25 @@
+import asyncio
 import math
+from datetime import datetime
+
+from aptdaemon import loop
 from tkinter import *
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 from PIL import ImageTk, Image
 import scipy
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.image import imread
 from scipy import misc
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from DICOMhandler import DICOMhandler
 from scipy.ndimage.filters import convolve
+import matplotlib
+matplotlib.use("TkAgg")
+import threading
+import pygubu
+import ttkwidgets
 
 
 class Radon:
@@ -16,14 +27,17 @@ class Radon:
     def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float,
                  dicom: bool = False):  # da, span in radians
 
-        if dicom:
-            self._dicom = DICOMhandler().load(bitmap_path)
-            self._bitmap = self._dicom.bitmap
-        else:
-            self._bitmap = plt.imread(bitmap_path).astype('float64')[:, :, 0]
+        # if dicom:
+        #     self._dicom = DICOMhandler().load(bitmap_path)
+        #     self._bitmap = self._dicom.bitmap
+        # else:
+
+        self._dicom = None
+        self._bitmap = plt.imread(bitmap_path).astype('float64')[:, :, 0]
 
         self._h, self._w = self._bitmap.shape
         self._sinogram = None
+        self._sinogram_canvas = None
         self._center = np.array((self._h - 1, self._w - 1)) / 2
         self._da = da
         self._steps = int(2 * np.pi / da)
@@ -37,6 +51,10 @@ class Radon:
         self._calculate_detectors()
         self._reconstructed_bitmap = None
         self._reconstructed_unnormed = None
+
+    def setDICOM(self,filename):
+        self._dicom = DICOMhandler().load(filename)
+        self._bitmap = self._dicom.bitmap
 
     def _calculate_detectors(self):
         start_to_detector = self._rotation_angle + self._emitter_to_1st_detector
@@ -112,28 +130,45 @@ class Radon:
         self._sinogram = self._sinogram / norm * 255.0
         return self._sinogram
 
-    def sinogram_animated(self):
+    def sinogram_animated(self, frame, anim_callback):
         self._sinogram = np.zeros((self._detectors_no, self._steps), dtype='float64')
-        fig = plt.figure()
+        fig = plt.figure(figsize=(7,3))
 
         a = self._sinogram_step(0, anim=True)
         im = plt.imshow(a, interpolation='none', aspect='auto', vmin=0, vmax=1, cmap='gray')
 
         def animate_func(i):
-            im.set_array(self._sinogram_step(i, anim=True))
+            im.set_data(self._sinogram_step(i, anim=True))
+
+            if (i >= self._steps - 1):
+                anim_callback()
+
             return [im]
+
+
+        self._sinogram_canvas = FigureCanvasTkAgg(fig, master=frame)
+        self._sinogram_canvas.get_tk_widget().pack(side=LEFT, anchor="s")
 
         ani = anim.FuncAnimation(
             fig,
             animate_func,
-            frames=range(1, self._steps),
-            interval=1
+            frames= range(1, self._steps),
+            interval=1,
+            repeat=False
         )
-        plt.show()
 
-    def show_sinogram(self):
+        self._sinogram_canvas.draw()
+
+    def show_sinogram(self,frame,callback):
+        fig = plt.figure(figsize=(7,3))
+
         plt.imshow(self._sinogram, cmap='gray')
-        plt.show()
+        #
+        # frame.clear()
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas.get_tk_widget().pack()
+
+        canvas.draw()
 
     def _reset(self):
         self._rotation_angle = 0
@@ -173,21 +208,28 @@ class Radon:
         k = np.array([[10, 10, 10],
                       [10, k, 10],
                       [10, 10, 10]])
-        self._reconstructed_unnormed = convolve(self._reconstructed_unnormed, k, mode=m)
+        self._reconstructed_unnormed = convolve(self._reconstructed_unnormed, k, mode=mode)
 
         return self._reconstructed_unnormed
 
-    def reconstruction_animated(self):
+    def reconstruction_animated(self, frame, anim_callback):
         self._reset()
         self._reconstructed_unnormed = np.zeros((self._h, self._w), dtype='float64')
-        fig = plt.figure()
+        fig = plt.figure(figsize=(7,4))
 
         a = self._reconstruction_step(0, anim=True)
         im = plt.imshow(a, interpolation='none', aspect='auto', vmin=0, vmax=1, cmap='gray')
 
         def animate_func(i):
-            im.set_array(self._reconstruction_step(i, anim=True))
+            im.set_data(self._reconstruction_step(i, anim=True))
+
+            if (i >= self._steps - 1):
+                anim_callback()
+
             return [im]
+
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas.get_tk_widget().pack()
 
         ani = anim.FuncAnimation(
             fig,
@@ -196,11 +238,15 @@ class Radon:
             interval=1,
             repeat=False
         )
-        plt.show()
 
-    def show_reconstruction(self):
+        canvas.draw()
+
+    def show_reconstruction(self,frame):
+        fig = plt.figure(figsize=(7,4))
         plt.imshow(self._reconstructed_bitmap, cmap='gray')
-        plt.show()
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas.get_tk_widget().pack()
+        canvas.draw()
 
     def show_difference(self):
         diff = self._reconstructed_bitmap - self._bitmap
@@ -211,63 +257,172 @@ class Radon:
 
 class GUI:
 
-    def __openAndResize(self, filename, height, panel):
+    def get_variable(self,name):
+        return self.builder.get_variable(name).get()
+
+    @staticmethod
+    def open_and_resize(filename,width, height, panel):
         image = Image.open(filename)
-        image = image.resize((500,height),Image.ANTIALIAS)
+        image = image.resize((width,height),Image.ANTIALIAS)
         image = ImageTk.PhotoImage(image)
         panel.configure(image=image)
         panel.image = image
 
-    def _showBasicImage(self):
-        self._filename = filedialog.askopenfilename()
-        self.__openAndResize(self._filename, 480, self.panel)
+    def _show_basic_image(self,event=None):
+        if (event):
+            self._filename = event.widget.cget('path')
+        GUI.open_and_resize(self._filename, 500, 480, self.panel)
 
-    def _makeSinogram(self):
-        self._r = Radon(self._filename, np.pi / 360, 200, np.pi)
-        bitmap = self._r.sinogram()
-        scipy.misc.imsave('outfile.jpg', bitmap)
-        self.__openAndResize("outfile.jpg",bitmap.shape[0],self.panel_sinogram)
+        self.show_tab(1)
 
-    def _showResult(self):
-        bitmap = self._r.reconstruct()
-        scipy.misc.imsave('result.jpg', bitmap)
-        self.__openAndResize("result.jpg",480,self.panel_result)
+    def _afterSinogram(self):
+        self.show_tab(2)
+
+    def destroy(self, frame):
+        for widget in frame.winfo_children():
+            widget.destroy()
+
+    def generate_sinogram(self):
+        self._r = Radon(self._filename, np.pi / self.slider_alpha.get(), self.slider_detectors.get(), np.pi / 180 * self.slider_range.get())
+
+        self.destroy(self.f2)
+
+        if ("ANIMACJA" in self.typ.get()):
+            self._r.sinogram_animated(self.f2,self._afterSinogram)
+        else:
+            self._r.sinogram()
+            self._r.show_sinogram(self.f2,self._afterSinogram)
+
+    def create_dicom(self):
+        dh = DICOMhandler()
+
+        p = DICOMhandler.Patient(self.get_variable('pesel'),
+                                 self.get_variable('name'),
+                                 self.get_variable('pesel')[0:7],
+                                 self.get_variable('sex'))
+
+        date = self.builder.get_object('calendar_input').selection
+        comments = self.text_comments.get("1.0", END)
+
+        metadata = {
+            "patient": p,
+            'date': date,
+            'comments': comments
+        }
+
+        dh.new(p.id + ".DCM", self._r._reconstructed_bitmap, metadata)
+
+        print("Ok")
+
+        o = dh.load(p.id + ".DCM")
+
+        self.show_dicom(o)
+
+    def show_dicom(self, o):
+        fig = plt.figure(figsize=(9, 6))
+        plt.imshow(o.bitmap, cmap='gray')
+        canvas = FigureCanvasTkAgg(fig, master=self.f4)
+        canvas.get_tk_widget().pack()
+        canvas.draw()
+        self.show_tab(3)
+
+    def generate_result(self):
+        self.destroy(self.f3)
+
+        if ("Animacja" in self.get_variable("result_type")):
+            self._r.reconstruction_animated(self.f3, self._afterSinogram)
+        elif ("bez" in self.get_variable("result_type")):
+            self._r.reconstruct(filter=False)
+            self._r.show_reconstruction(self.f3)
+        else:
+            self._r.reconstruct(filter=True)
+            self._r.show_reconstruction(self.f3)
+
+        if (self.get_variable('rec_dicom')):
+            self.create_dicom()
+
+    def show_tab(self, number):
+        main_notebook = self.builder.get_object("main_notebook")
+        main_notebook.tab(number, state='normal')
+
+    def disable_tab(self, number):
+        main_notebook = self.builder.get_object("main_notebook")
+        main_notebook.tab(number, state='disabled')
+
+    def hide_tab(self, number):
+        main_notebook = self.builder.get_object("main_notebook")
+        main_notebook.tab(number, state='hidden')
+
+    def validate_date(self):
+        return True
+
+    def show_calendar(self):
+        self.calendar_button['state'] = ACTIVE
+        self.calendar.grid(row=1,column=0)
+
+    def on_cell_clicked(self, event):
+        self.set_date(event.widget.selection)
+
+    def set_date(self, date):
+        self.date_study.configure(state='normal')
+        self.date_study.delete(0,END)
+        self.date_study.insert(0,date.strftime("%d/%m/%Y"))
+        self.date_study.configure(state='readonly')
+        self.calendar_button['state'] = NORMAL
+        self.calendar.grid_remove()
 
     def __init__(self):
-        self._filename = "";
 
-        self.root = Tk()
-        self.root.geometry("1500x500")
+        self.builder = builder = pygubu.Builder()
+        builder.add_from_file('resources/gui.ui')
 
-        self.f = Frame(self.root, height=500, width=500)
-        self.f.pack_propagate(0)
-        self.f.place(x=0, y=0)
+        self.root = builder.get_object('mainwindow')
 
-        self.f2 = Frame(self.root, height=500, width=500)
-        self.f2.pack_propagate(0)
-        self.f2.place(x=500, y=0)
+        self.calendar = builder.get_object('calendar_input')
+        self.calendar.grid_remove()
 
-        self.f3 = Frame(self.root, height=500, width=500)
-        self.f3.pack_propagate(0)
-        self.f3.place(x=1000, y=0)
+        self.calendar_button = builder.get_object('calendar_button')
+        self.date_study = builder.get_object('date_study')
 
-        self.chooseFileButton = Button(self.f,text="Wybierz plik", command=self._showBasicImage)
-        self.chooseFileButton.pack(fill=X, expand=0)
+        # Selekt typu w sinogramie
+        self.select_sinogram = builder.get_object('select_sinogram')
+        self.select_sinogram.configure(values=["Z animacją", "Gotowy rezultat"])
+        self.select_sinogram.set("Z animacją")
 
-        self.sinogramButton = Button(self.f2,text="Pokaż sinogram", command=self._makeSinogram)
-        self.sinogramButton.pack(fill=X, expand=0)
+        # Selekt typu w rekonstrukcji
+        self.select_rec_result = builder.get_object('select_rec_result')
+        self.select_rec_result.configure(values=["Gotowy rezultat bez splotu", "Gotowy rezultat ze splotem", "Animacja bez splotu"])
+        self.select_rec_result.set("Gotowy rezultat bez splotu")
 
-        self.resultButton = Button(self.f3,text="Pokaż wynik końcowy", command=self._showResult)
-        self.resultButton.pack(fill=X, expand=0)
+        self.panel = builder.get_object("image_frame")
 
-        self.panel = Label(self.f)
-        self.panel.pack(fill=BOTH, expand=1)
+        self.f2 = builder.get_object("sinogram_result")
 
-        self.panel_sinogram = Label(self.f2)
-        self.panel_sinogram.pack(fill=BOTH,expand=1)
+        self.f3 = builder.get_object("rec_result")
 
-        self.panel_result = Label(self.f3)
-        self.panel_result.pack(fill=BOTH, expand=1)
+        self.f4 = builder.get_object("dicom_result")
+
+        self.slider_alpha = builder.get_object("slider_alpha")
+        self.slider_detectors = builder.get_object("slider_detectors")
+        self.slider_range = builder.get_object("slider_range")
+
+        self.typ = builder.get_object("select_sinogram")
+        self.typ.configure(values=["ANIMACJA","GOTOWY REZULTAT"])
+        self.typ.set("ANIMACJA")
+
+        self.disable_tab(1)
+        self.disable_tab(2)
+        self.hide_tab(3)
+
+        self._filename = '/home/olunia/Pulpit/IWM/images/marchewka.jpg'
+        self._show_basic_image()
+
+        self.text_comments = builder.get_object("text_comments")
+
+        self.set_date(datetime.now())
+        self.calendar.select_day(datetime.now().day)
+
+        builder.connect_callbacks(self)
 
         self.root.mainloop()
 
