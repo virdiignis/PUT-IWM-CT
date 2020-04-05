@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -10,7 +9,6 @@ void brasenham(int height, int width, int y0, int x0, int y1, int x1, bool *resu
 
     int xsign = dx / abs(dx);
     int ysign = dy / abs(dy);
-//    printf("%d %d", xsign, ysign);
 
     dx = abs(dx);
     dy = abs(dy);
@@ -43,7 +41,6 @@ void brasenham(int height, int width, int y0, int x0, int y1, int x1, bool *resu
 
     while (0 <= xr && xr < width && 0 <= yr && yr < height) {
         result[yr* width + xr] = true;
-//        printf("%d %d\n", yr, xr);
 
         if (D >= 0) {
             y += 1;

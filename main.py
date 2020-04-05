@@ -42,6 +42,18 @@ class Radon:
         self._reconstructed_unnormed = None
         self._c_array_type = c_bool * (self._h * self._w)
 
+    def _rotate(self):
+        self._rotation_angle += self._da
+        self._calculate_emitter()
+        self._calculate_detectors()
+
+    def _calculate_emitter(self):
+        mag = np.linalg.norm(self._initial_emitter_vector)
+        s = np.sin(self._rotation_angle)
+        c = np.cos(self._rotation_angle)
+        self._emitter = (mag * s, mag * c)
+        self._emitter += self._center
+
     def _calculate_detectors(self):
         start_to_detector = self._rotation_angle + self._emitter_to_1st_detector
         mag = np.linalg.norm(self._initial_emitter_vector)
@@ -51,18 +63,6 @@ class Radon:
             self._detectors[i] = (mag * s, mag * c)
             start_to_detector += self._angle_between_detectors
         self._detectors += self._center
-
-    def _calculate_emitter(self):
-        mag = np.linalg.norm(self._initial_emitter_vector)
-        s = np.sin(self._rotation_angle)
-        c = np.cos(self._rotation_angle)
-        self._emitter = (mag * s, mag * c)
-        self._emitter += self._center
-
-    def _rotate(self):
-        self._rotation_angle += self._da
-        self._calculate_emitter()
-        self._calculate_detectors()
 
     def _brasenham(self, p0, p1):
         result = self._c_array_type()
@@ -340,7 +340,7 @@ class Tests:
 
 
 if __name__ == '__main__':
-    # t = Tests()
+    t = Tests()
     # p1 = Process(target=t.test1)
     # p2 = Process(target=t.test2)
     # p3 = Process(target=t.test3)
@@ -351,8 +351,12 @@ if __name__ == '__main__':
     # p2.join()
     # p3.join()
 
-    r = Radon("images/Shepp_logan.jpg", np.pi/720, 500, 3*np.pi/2)
+    r = Radon("images/CT_ScoutView-large.jpg", np.pi / 360, 360, 270*np.pi/180)
     r.sinogram()
     r.show_sinogram()
-    r.reconstruct()
+    r.reconstruct(filter=False)
     r.show_reconstruction()
+    print(t.mse(r._bitmap, r._reconstructed_bitmap))
+    r.reconstruct(filter=True)
+    r.show_reconstruction()
+    print(t.mse(r._bitmap, r._reconstructed_bitmap))
