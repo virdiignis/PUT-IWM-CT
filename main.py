@@ -400,7 +400,7 @@ class GUI:
         self.disable_tab(2)
         self.hide_tab(3)
 
-        self._filename = 'images/marchewka.jpg'
+        self._filename = 'images/Kropka.jpg'
         self._show_basic_image()
 
         self.text_comments = builder.get_object("text_comments")
