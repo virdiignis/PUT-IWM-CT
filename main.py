@@ -81,7 +81,7 @@ class Radon:
             self._sinogram[i][step] = np.mean(self._bitmap[self._brasenham(self._emitter, d)])
 
         if anim:
-            norm = np.linalg.norm(self._sinogram)
+            norm = self._sinogram.max()
             return self._sinogram / norm * 255.0
 
     def sinogram(self):
@@ -89,7 +89,7 @@ class Radon:
         for i in range(self._steps):
             self._sinogram_step(i)
 
-        norm = np.linalg.norm(self._sinogram)
+        norm = self._sinogram.max()
         self._sinogram = self._sinogram / norm * 255.0
         return self._sinogram
 
@@ -131,7 +131,7 @@ class Radon:
 
         if anim:
             print(step)
-            norm = np.linalg.norm(self._reconstructed_unnormed)
+            norm = self._reconstructed_unnormed.max()
             return self._reconstructed_unnormed / norm * 255.0
 
     def reconstruct(self, filter=True):
@@ -268,53 +268,91 @@ class Tests:
         self.image_path = "images/Shepp_logan.jpg"
 
     def test1(self):
-        f = open("results1.csv", "w")
+        f = open("foff2results1.csv", "w")
         w = csv.writer(f)
         steps = 180
         detectors_span = 1
         for detectors in range(90, 721, 90):
             r = Radon(self.image_path, np.pi / steps, detectors, detectors_span * np.pi)
             r.sinogram()
-            r.reconstruct()
+            r.reconstruct(filter=False)
             print((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
             w.writerow((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
         f.close()
 
     def test2(self):
-        f = open("results2.csv", "w")
+        f = open("foff2results2.csv", "w")
         w = csv.writer(f)
         detectors = 180
         detectors_span = 1
         for steps in range(90, 721, 90):
             r = Radon(self.image_path, np.pi / steps, detectors, detectors_span * np.pi)
             r.sinogram()
-            r.reconstruct()
+            r.reconstruct(filter=False)
             print((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
             w.writerow((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
         f.close()
 
     def test3(self):
-        f = open("results2.csv", "w")
+        f = open("foff2results3.csv", "w")
         w = csv.writer(f)
         detectors = 180
         steps = 180
         for detectors_span in np.linspace(45, 270, 45):
             r = Radon(self.image_path, np.pi / steps, detectors, detectors_span / 180 * np.pi)
             r.sinogram()
-            r.reconstruct()
+            r.reconstruct(filter=False)
             print((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
             w.writerow((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
         f.close()
 
+    def test4(self):
+        f = open("foff2results4.csv", "w")
+        w = csv.writer(f)
+        detectors = 180
+        steps = 180
+        detectors_span = 180
+        r = Radon(self.image_path, np.pi / steps, detectors, detectors_span / 180 * np.pi)
+        r.sinogram()
+        r.reconstruct(filter=False)
+        print((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+        w.writerow((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+        r.reconstruct(filter=True)
+        print((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+        w.writerow((steps, detectors, detectors_span, self.mse(r._bitmap, r._reconstructed_bitmap)))
+        f.close()
+
+    def test5(self):
+        f = open("2results5.csv", "w")
+        w = csv.writer(f)
+        detectors = 180
+        steps = 180
+        detectors_span = 180
+        r = Radon(self.image_path, np.pi / steps, detectors, detectors_span / 180 * np.pi)
+        r.sinogram()
+        r._reconstructed_unnormed = np.zeros((r._h, r._w), dtype='float64')
+        for i in range(r._steps):
+            rs = r._reconstruction_step(i, anim=True)
+            rsme = self.mse(r._bitmap, rs)
+            print((i, detectors, detectors_span, rsme))
+            w.writerow((i, detectors, detectors_span, rsme))
+        f.close()
+
 
 if __name__ == '__main__':
-    t = Tests()
-    p1 = Process(target=t.test1)
-    p2 = Process(target=t.test2)
-    p3 = Process(target=t.test3)
-    p1.start()
-    p2.start()
-    p3.start()
-    p1.join()
-    p2.join()
-    p3.join()
+    # t = Tests()
+    # p1 = Process(target=t.test1)
+    # p2 = Process(target=t.test2)
+    # p3 = Process(target=t.test3)
+    # p1.start()
+    # p2.start()
+    # p3.start()
+    # p1.join()
+    # p2.join()
+    # p3.join()
+
+    r = Radon("images/Shepp_logan.jpg", np.pi/720, 500, 3*np.pi/2)
+    r.sinogram()
+    r.show_sinogram()
+    r.reconstruct()
+    r.show_reconstruction()
