@@ -2,3 +2,4 @@ pillow
 scipy
 numpy
 matplotlib
+ttkwidgets

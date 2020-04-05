@@ -2,7 +2,6 @@ import asyncio
 import math
 from datetime import datetime
 
-from aptdaemon import loop
 from tkinter import *
 from tkinter import filedialog, ttk
 from PIL import ImageTk, Image
@@ -256,7 +255,6 @@ class Radon:
         plt.show()
 
 class GUI:
-
     def get_variable(self,name):
         return self.builder.get_variable(name).get()
 
@@ -414,7 +412,7 @@ class GUI:
         self.disable_tab(2)
         self.hide_tab(3)
 
-        self._filename = '/home/olunia/Pulpit/IWM/images/marchewka.jpg'
+        self._filename = 'images/marchewka.jpg'
         self._show_basic_image()
 
         self.text_comments = builder.get_object("text_comments")
