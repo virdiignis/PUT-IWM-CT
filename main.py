@@ -142,8 +142,9 @@ class Radon:
 
     def show_sinogram(self, frame, callback):
         fig = plt.figure(figsize=(7, 3))
-
         plt.imshow(self._sinogram, cmap='gray')
+        plt.xticks([])
+        plt.yticks([])
         #
         # frame.clear()
         canvas = FigureCanvasTkAgg(fig, master=frame)
@@ -223,6 +224,8 @@ class Radon:
     def show_reconstruction(self, frame):
         fig = plt.figure(figsize=(7, 4))
         plt.imshow(self._reconstructed_bitmap, cmap='gray')
+        plt.xticks([])
+        plt.yticks([])
         canvas = FigureCanvasTkAgg(fig, master=frame)
         canvas.get_tk_widget().pack()
         canvas.draw()
