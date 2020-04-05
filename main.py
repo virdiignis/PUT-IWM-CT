@@ -1,5 +1,6 @@
 import asyncio
 import math
+import shutil
 from datetime import datetime
 
 from aptdaemon import loop
@@ -299,7 +300,7 @@ class GUI:
 
         p = DICOMhandler.Patient(self.get_variable('pesel'),
                                  self.get_variable('name'),
-                                 self.get_variable('pesel')[0:7],
+                                 self.get_variable('pesel')[0:5],
                                  self.get_variable('sex'))
 
         date = self.builder.get_object('calendar_input').selection
@@ -311,21 +312,26 @@ class GUI:
             'comments': comments
         }
 
-        dh.new(p.id + ".DCM", self._r._reconstructed_bitmap, metadata)
+        self.dicom_path = p.id + ".DCM"
+
+        dh.new(self.dicom_path, self._r._reconstructed_bitmap, metadata)
 
         print("Ok")
 
-        o = dh.load(p.id + ".DCM")
+        o = dh.load(self.dicom_path)
 
         self.show_dicom(o)
 
     def show_dicom(self, o):
-        fig = plt.figure(figsize=(9, 6))
+        fig = plt.figure(figsize=(7, 5))
         plt.imshow(o.bitmap, cmap='gray')
         canvas = FigureCanvasTkAgg(fig, master=self.f4)
         canvas.get_tk_widget().pack()
         canvas.draw()
         self.show_tab(3)
+
+    def save_file(self):
+        shutil.copy(self.dicom_path,self.get_variable("save_file_path"))
 
     def generate_result(self):
         self.destroy(self.f3)
