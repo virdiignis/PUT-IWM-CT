@@ -25,7 +25,7 @@ import ttkwidgets
 
 
 class Radon:
-    brasenham_lib = CDLL("/home/prance/PycharmProjects/IwM/CT/brasenham.so")
+    brasenham_lib = CDLL("/home/olunia/Pulpit/IWM/brasenham.so")
 
     def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float,
                  dicom: bool = False):  # da, span in radians
@@ -304,7 +304,7 @@ class GUI:
         self.show_dicom(o)
 
     def show_dicom(self, o):
-        fig = plt.figure(figsize=(9, 6))
+        fig = plt.figure(figsize=(7, 5))
         plt.imshow(o.bitmap, cmap='gray')
         canvas = FigureCanvasTkAgg(fig, master=self.f4)
         canvas.get_tk_widget().pack()
