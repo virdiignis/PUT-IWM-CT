@@ -25,7 +25,8 @@ import ttkwidgets
 
 
 class Radon:
-    brasenham_lib = CDLL("/home/olunia/Pulpit/IWM/brasenham.so")
+    # TODO: Fix ścieżka
+    brasenham_lib = CDLL("/home/prance/PycharmProjects/IwM/CT/brasenham.so")
 
     def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float,
                  dicom: bool = False):  # da, span in radians
