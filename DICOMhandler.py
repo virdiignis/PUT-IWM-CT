@@ -77,7 +77,6 @@ class DICOMhandler:
 
 if __name__ == '__main__':
     h = DICOMhandler()
-    # o = h.load('/home/prance/PycharmProjects/IwM/CT/DICOM/0002.DCM')
     bitmap = imread('images/Kropka.jpg')[:, :, 0]
     p = DICOMhandler.Patient('1000', "Elon Musk", "19930409", 'M')
     date = datetime.now()
