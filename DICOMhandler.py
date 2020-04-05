@@ -1,4 +1,3 @@
-import numpy
 import pydicom
 from matplotlib.image import imread
 from pydicom.dataset import Dataset, FileDataset
@@ -44,7 +43,7 @@ class DICOMhandler:
 
         ds.Columns, ds.Rows = bitmap.shape
         ds.BitsAllocated = 8
-        ds.PixelData = bitmap.tobytes()
+        ds.PixelData = bitmap.astype('uint8').tobytes()
         ds.SamplesPerPixel = 1
         ds.PixelRepresentation = 0
         ds.PhotometricInterpretation = 'MONOCHROME2'
@@ -76,21 +75,30 @@ class DICOMhandler:
 
 
 if __name__ == '__main__':
-    h = DICOMhandler()
-    bitmap = imread('images/Kropka.jpg')[:, :, 0]
-    p = DICOMhandler.Patient('1000', "Elon Musk", "19930409", 'M')
-    date = datetime.now()
-    comment = "hehehehehe"
-
-    metadata = {
-        "patient": p,
-        'date': date,
-        'comments': comment
-    }
-
-    h.new("test.dcm", bitmap, metadata)
-    print("Ok")
-    o = h.load('/home/prance/PycharmProjects/IwM/CT/test.dcm')
-    plt.imshow(o.bitmap, cmap='gray')
-    plt.show()
+    # h = DICOMhandler()
+    # # bitmap = imread('images/Kropka.jpg')[:, :, 0]
+    #
+    # r = Radon("images/CT_ScoutView-large.jpg", np.pi / 360, 360, 270 * np.pi / 180)
+    # r.sinogram()
+    # # r.show_sinogram()
+    # r.reconstruct(filter=False)
+    # # r.show_reconstruction()
+    #
+    # bitmap = r._reconstructed_bitmap
+    #
+    # p = DICOMhandler.Patient('1000', "Elon Musk", "19930409", 'M')
+    # date = datetime.now()
+    # comment = "hehehehehe"
+    #
+    # metadata = {
+    #     "patient": p,
+    #     'date': date,
+    #     'comments': comment
+    # }
+    #
+    # h.new("test.dcm", bitmap, metadata)
+    # print("Ok")
+    # o = h.load('/home/prance/PycharmProjects/IwM/CT/test.dcm')
+    # plt.imshow(o.bitmap, cmap='gray')
+    # plt.show()
     pass
