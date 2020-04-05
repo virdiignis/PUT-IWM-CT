@@ -152,7 +152,7 @@
                     <child>
                       <object class="tk.Scale" id="slider_alpha">
                         <property name="from_">20</property>
-                        <property name="label" translatable="yes">Krok α</property>
+                        <property name="label" translatable="yes">Liczba kroków układu</property>
                         <property name="orient">horizontal</property>
                         <property name="tickinterval">2980</property>
                         <property name="to">3000</property>
