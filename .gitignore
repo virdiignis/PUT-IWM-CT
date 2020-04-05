@@ -1,4 +1,12 @@
 # Project exclude paths
 /venv/
 .idea
-build/*
+/build
+/examples
+/po
+/pygubu
+/pygubu.egg-info
+/pygubudesigner
+setup.cfg
+setup.cfg
+MANIFEST.in
