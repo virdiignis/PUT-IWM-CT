@@ -493,7 +493,7 @@ class Tests:
 
 
 if __name__ == '__main__':
-    # gui = GUI()
+    gui = GUI()
     # t = Tests()
     # p1 = Process(target=t.test1)
     # p2 = Process(target=t.test2)
@@ -514,31 +514,31 @@ if __name__ == '__main__':
     # r.reconstruct(filter=True)
     # r.show_reconstruction()
     # print(t.mse(r._bitmap, r._reconstructed_bitmap))
-
-    h = DICOMhandler()
-    bitmap = imread('images/Kwadraty2.jpg')[:, :, 0]
-
-    r = Radon("images/Kropka.jpg", np.pi / 180, 100, 270 * np.pi / 180)
-    r.sinogram()
-    # # r.show_sinogram()
-    r.reconstruct(filter=False)
-    # r.show_reconstruction()
-
-    bitmap = r._reconstructed_bitmap
-
-    p = DICOMhandler.Patient('1000', "Elon Musk", "19930409", 'M')
-    date = datetime.now()
-    comment = "hehehehehe"
-
-    metadata = {
-        "patient": p,
-        'date': date,
-        'comments': comment
-    }
-
-    h.new("test.dcm", bitmap, metadata)
-    print("Ok")
-    o = h.load('test.dcm')
-    plt.imshow(o.bitmap, cmap='gray')
-    plt.show()
-    pass
+    #
+    # h = DICOMhandler()
+    # bitmap = imread('images/Kwadraty2.jpg')[:, :, 0]
+    #
+    # r = Radon("images/Kropka.jpg", np.pi / 180, 100, 270 * np.pi / 180)
+    # r.sinogram()
+    # # # r.show_sinogram()
+    # r.reconstruct(filter=False)
+    # # r.show_reconstruction()
+    #
+    # bitmap = r._reconstructed_bitmap
+    #
+    # p = DICOMhandler.Patient('1000', "Elon Musk", "19930409", 'M')
+    # date = datetime.now()
+    # comment = "hehehehehe"
+    #
+    # metadata = {
+    #     "patient": p,
+    #     'date': date,
+    #     'comments': comment
+    # }
+    #
+    # h.new("test.dcm", bitmap, metadata)
+    # print("Ok")
+    # o = h.load('test.dcm')
+    # plt.imshow(o.bitmap, cmap='gray')
+    # plt.show()
+    # pass
