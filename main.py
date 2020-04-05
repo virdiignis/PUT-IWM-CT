@@ -168,6 +168,7 @@ class Radon:
         canvas.get_tk_widget().pack()
 
         canvas.draw()
+        callback()
 
     def _reset(self):
         self._rotation_angle = 0

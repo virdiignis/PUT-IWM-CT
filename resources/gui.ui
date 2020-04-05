@@ -238,6 +238,7 @@
                     </child>
                     <child>
                       <object class="ttk.Combobox" id="select_sinogram">
+                        <property name="state">readonly</property>
                         <layout>
                           <property name="column">0</property>
                           <property name="pady">8</property>
