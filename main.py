@@ -26,7 +26,8 @@ import ttkwidgets
 
 class Radon:
     # TODO: Fix ścieżka
-    brasenham_lib = CDLL("/home/prance/PycharmProjects/IwM/CT/brasenham.so")
+    brasenham_lib = CDLL("/home/gbryk/Studia/IwM/PUT-IWM-CT/brasenham.so")
+    _convolution_mask = [-((2 / k / np.pi) ** 2) if k % 2 else int(k == 0) for k in range(-10, 10)]
 
     def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float,
                  dicom: bool = False):  # da, span in radians
@@ -96,10 +97,13 @@ class Radon:
 
         return result
 
-    def _sinogram_step(self, step: int, anim: bool = False):
+    def _sinogram_step(self, step: int, anim: bool = False, filter: bool = True):
         self._rotate()
         for i, d in enumerate(self._detectors):
             self._sinogram[i][step] = np.mean(self._bitmap[self._brasenham(self._emitter, d)])
+
+        if filter:
+            self._sinogram[::, step] = convolve(self._sinogram[::, step], self._convolution_mask, mode='constant')
 
         if anim:
             norm = self._sinogram.max()
@@ -509,11 +513,11 @@ if __name__ == '__main__':
     # p2.join()
     # p3.join()
 
-    # r = Radon("images/CT_ScoutView-large.jpg", np.pi / 360, 360, 270*np.pi/180)
+    # r = Radon("images/SADDLE_PE-large.JPG", np.pi / 360, 360, 270*np.pi/180)
     # r.sinogram()
-    # r.show_sinogram()
-    # r.reconstruct(filter=False)
-    # r.show_reconstruction()
+    # r.show_sinogram(None, None)
+    # r.reconstruct(filter=True)
+    # r.show_reconstruction(None)
     # print(t.mse(r._bitmap, r._reconstructed_bitmap))
     # r.reconstruct(filter=True)
     # r.show_reconstruction()
