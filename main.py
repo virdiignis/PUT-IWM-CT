@@ -27,7 +27,7 @@ import ttkwidgets
 class Radon:
     # TODO: Fix ścieżka
     brasenham_lib = CDLL("/home/gbryk/Studia/IwM/PUT-IWM-CT/brasenham.so")
-    _convolution_mask = [-((2 / k / np.pi) ** 2) if k % 2 else int(k == 0) for k in range(-10, 10)]
+    _convolution_mask = [-((2 / k / np.pi) ** 2) if k % 2 else int(k == 0) for k in range(-10, 11)]
 
     def __init__(self, bitmap_path: str, da: float, detectors_no: int, span: float,
                  dicom: bool = False):  # da, span in radians

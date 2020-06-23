@@ -1,5 +1,7 @@
+import numpy as np
 import pydicom
 from matplotlib.image import imread
+from pydicom.data import get_testdata_files
 from pydicom.dataset import Dataset, FileDataset
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -33,20 +35,22 @@ class DICOMhandler:
 
     @staticmethod
     def new(filename, bitmap, metadata):
-        file_meta = Dataset()
-        file_meta.MediaStorageSOPClassUID = '1.2.840.10008.5.1.4.1.1.2'
-        file_meta.MediaStorageSOPInstanceUID = "1.2.3"
-        file_meta.ImplementationClassUID = "1.2.3.4"
-        file_meta.TransferSyntaxUID = "1.2.840.10008.1.2"
+        tfn = get_testdata_files('CT_small.dcm')[0]
+        ds = pydicom.dcmread(tfn)
 
-        ds = FileDataset(filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
-
-        ds.Columns, ds.Rows = bitmap.shape
-        ds.BitsAllocated = 8
-        ds.PixelData = bitmap.astype('uint8').tobytes()
+        ds.Rows, ds.Columns = bitmap.shape
+        ds.BitsAllocated = 16
+        ds.BitsStored = 16
         ds.SamplesPerPixel = 1
         ds.PixelRepresentation = 0
         ds.PhotometricInterpretation = 'MONOCHROME2'
+
+        pixel_data = bitmap
+        pixel_data -= np.min(pixel_data)
+        pixel_data *= 65536 / np.max(pixel_data)
+        pixel_data = pixel_data.astype(np.uint16)
+        pixel_data = pixel_data.tobytes()
+        ds.PixelData = pixel_data
 
         ds.AccessionNumber = '1'
         ds.SeriesNumber = '1'
@@ -61,9 +65,9 @@ class DICOMhandler:
         ds.StudyTime = metadata['date'].strftime('%H%M%S')
         ds.ImageComments = metadata['comments']
 
-        # Set the transfer syntax
-        ds.is_little_endian = True
-        ds.is_implicit_VR = True
+        # # Set the transfer syntax
+        # ds.is_little_endian = True
+        # ds.is_implicit_VR = True
 
         # Set creation date/time
         dt = datetime.now()
